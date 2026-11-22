@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Baum-Blitz</title>
+<link rel="manifest" href="../manifest.json"><meta name="theme-color" content="#4f8f2f"><link rel="apple-touch-icon" href="../icon-192.png"><link rel="icon" href="../icon-192.png">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:"Comic Sans MS","Chalkboard SE",sans-serif;background:#eaf7e1;color:#24331b}
+header{background:#4f8f2f;color:#fff;padding:10px 12px;text-align:center;position:relative}header h1{margin:0;font-size:26px}
+.home{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;font-size:15px;background:rgba(255,255,255,.2);padding:6px 10px;border-radius:12px}
+main{max-width:960px;margin:0 auto;padding:10px 12px 40px;text-align:center}
+.btn{font:inherit;font-size:19px;padding:10px 18px;border-radius:14px;border:3px solid #4f8f2f;background:#fff;cursor:pointer;margin:5px}.btn.on,.btn:hover{background:#ffd54a}
+.big{font-size:24px;padding:14px 28px;background:#ffd54a}
+.info{font-size:20px;margin:8px 0}.hs{font-size:17px;color:#5a6e4a}
+.bar{height:22px;background:#fff;border:3px solid #4f8f2f;border-radius:12px;overflow:hidden;max-width:520px;margin:6px auto}
+.bar div{height:100%;background:linear-gradient(90deg,#ffb300,#4f8f2f);transition:width 1s linear}
+.bar.low div{background:#e53935}
+.top{display:flex;justify-content:center;gap:22px;font-size:22px;flex-wrap:wrap}
+.pic{background:#fff;border:4px solid #4f8f2f;border-radius:20px;height:230px;max-width:340px;margin:10px auto;display:flex;align-items:center;justify-content:center;padding:8px;transition:background .2s}
+.pic img{max-width:100%;max-height:210px}.pic.ok{background:#c9f2c6;border-color:#2e9e3e}.pic.no{background:#ffd2d2;border-color:#d33;animation:sh .3s}
+@keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.q{font-size:21px;margin:4px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:520px;margin:10px auto}
+.opt{font:inherit;font-size:24px;padding:14px 8px;border-radius:14px;border:3px solid #4f8f2f;background:#f4fbef;cursor:pointer}
+.opt:active{transform:scale(.96)}.opt.right{background:#c9f2c6;border-color:#2e9e3e}.opt.wrong{background:#ffd2d2;border-color:#d33}
+.combo{color:#e65100;font-weight:bold;min-height:28px;font-size:20px}
+.fly{position:fixed;font-size:34px;font-weight:bold;color:#2e9e3e;pointer-events:none;transition:all .8s;z-index:50}
+#end{display:none;background:#fff;border-radius:20px;padding:16px;border:4px solid #ffd54a;margin:12px auto;max-width:460px}
+.miss{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}.miss div{width:90px;font-size:14px}.miss img{max-width:86px;max-height:70px}
+</style></head><body>
+<header><a class="home" href="../">⬅ Start</a><h1>⚡ Baum-Blitz</h1></header>
+<main>
+<div id="menu">
+<p class="info">Du hast <b>60 Sekunden</b>!<br>Ein Blatt oder eine Frucht erscheint – tippe so schnell wie möglich auf den richtigen Baum.</p>
+<p class="info">Mehrere richtig hintereinander = <b>🔥 Bonuspunkte!</b></p>
+<p><b>Was soll kommen?</b><br><button class="btn on" data-m="mix">🔀 Blätter + Früchte</button><button class="btn" data-m="blatt">🍃 Nur Blätter</button><button class="btn" data-m="frucht">🌰 Nur Früchte</button></p>
+<button class="btn big" id="go">⚡ Start!</button>
+<p class="hs" id="hs"></p>
+</div>
+<div id="game" style="display:none">
+<div class="top"><span>⏱ <b id="tm">60</b> s</span><span>⭐ <b id="pt">0</b> Punkte</span></div>
+<div class="bar" id="bar"><div id="bf" style="width:100%"></div></div>
+<p class="q" id="q"></p>
+<div class="pic" id="pic"><img id="im" alt=""></div>
+<div class="combo" id="cb"></div>
+<div class="opts" id="opts"></div>
+</div>
+<div id="end"></div>
+</main>
+<script>
+const T=[{k:'eiche',n:'Eiche',t:'L'},{k:'ahorn',n:'Ahorn',t:'L'},{k:'buche',n:'Buche',t:'L'},{k:'linde',n:'Linde',t:'L'},{k:'birke',n:'Birke',t:'L'},{k:'kastanie',n:'Kastanie',t:'L'},{k:'fichte',n:'Fichte',t:'N'},{k:'kiefer',n:'Kiefer',t:'N'},{k:'tanne',n:'Tanne',t:'N'},{k:'laerche',n:'Lärche',t:'N'},{k:'eibe',n:'Eibe',t:'N'}];
+const img=(k,p)=>`../baum-detektiv/img/${k}_${p}.jpg`;
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]);
+let AC=null;function tone(f,d,ty,w){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=ty||'sine';o.frequency.value=f;g.gain.setValueAtTime(.18,AC.currentTime+(w||0));g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+(w||0)+d);o.connect(g).connect(AC.destination);o.start(AC.currentTime+(w||0));o.stop(AC.currentTime+(w||0)+d)}catch(e){}}
+const sOk=()=>{tone(660,.15);tone(880,.2,'sine',.1)},sBad=()=>tone(180,.25,'square'),sWin=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',i*.13));
+const ls={get:(k)=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function confetti(){const e=['🍂','🍁','🌰','⭐','🎉','🌲'];for(let i=0;i<40;i++){const s=document.createElement('div');s.textContent=e[i%6];s.style.cssText=`position:fixed;top:-40px;left:${Math.random()*100}vw;font-size:${24+Math.random()*20}px;z-index:99;transition:transform ${2+Math.random()*2}s linear,opacity 1s 2.5s;pointer-events:none`;document.body.appendChild(s);requestAnimationFrame(()=>requestAnimationFrame(()=>{s.style.transform=`translateY(110vh) rotate(${Math.random()*720}deg)`;s.style.opacity=0}));setTimeout(()=>s.remove(),4500)}}
+let mode='mix',pts=0,time=60,timer=null,combo=0,cur=null,busy=false,richtig=0,falsch=[],last=null;
+const key=()=>'blitz_'+mode;
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x===b));showHs()});
+function showHs(){const h=ls.get(key());document.getElementById('hs').textContent=h?'🏆 Dein Rekord: '+h+' Punkte':'Noch kein Rekord – leg los!'}
+showHs();
+document.getElementById('go').onclick=start;
+function start(){menu.style.display='none';end.style.display='none';game.style.display='';pts=0;time=60;combo=0;richtig=0;falsch=[];last=null;
+ upd();bf.style.width='100%';bar.classList.remove('low');next();clearInterval(timer);
+ timer=setInterval(()=>{time--;tm.textContent=time;bf.style.width=(time/60*100)+'%';bar.classList.toggle('low',time<=10);if(time<=10&&time>0)tone(1000,.05);if(time<=0){clearInterval(timer);fin()}},1000)}
+function upd(){pt.textContent=pts;tm.textContent=time;cb.textContent=combo>=3?'🔥 '+combo+'er-Serie! +'+bonus()+' Bonus':''}
+const bonus=()=>combo>=8?3:combo>=5?2:combo>=3?1:0;
+function next(){busy=false;let t;do{t=T[Math.floor(Math.random()*T.length)]}while(last&&t.k===last);last=t.k;
+ const p=mode==='mix'?(Math.random()<.5?'blatt':'frucht'):mode;cur={t,p};
+ im.src=img(t.k,p);pic.className='pic';
+ q.textContent=p==='blatt'?(t.t==='N'?'Von welchem Baum sind diese Nadeln?':'Von welchem Baum ist dieses Blatt?'):'Von welchem Baum ist diese Frucht?';
+ const o=shuffle([t,...shuffle(T.filter(x=>x.k!==t.k)).slice(0,3)]);opts.innerHTML='';
+ o.forEach(x=>{const b=document.createElement('button');b.className='opt';b.textContent=x.n;b.onclick=e=>answer(x,b,e);opts.appendChild(b)})}
+function answer(x,b,e){if(busy||time<=0)return;busy=true;
+ if(x.k===cur.t.k){combo++;richtig++;const g=1+bonus();pts+=g;b.classList.add('right');pic.classList.add('ok');sOk();flyPts('+'+g,e);upd();setTimeout(next,450)}
+ else{combo=0;b.classList.add('wrong');pic.classList.add('no');sBad();falsch.push(cur);
+  [...opts.children].forEach(c=>{if(c.textContent===cur.t.n)c.classList.add('right')});upd();setTimeout(next,1300)}}
+function flyPts(s,e){const f=document.createElement('div');f.className='fly';f.textContent=s;f.style.left=(e.clientX||innerWidth/2)+'px';f.style.top=(e.clientY||300)+'px';document.body.appendChild(f);
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{f.style.transform='translateY(-90px)';f.style.opacity=0}));setTimeout(()=>f.remove(),900)}
+function fin(){game.style.display='none';const h=ls.get(key()),rec=!h||pts>h;if(rec&&pts>0)ls.set(key(),pts);
+ sWin();if(rec&&pts>0)confetti();
+ const seen={},m=falsch.filter(f=>{const k=f.t.k+f.p;if(seen[k])return false;return seen[k]=1});
+ end.style.display='block';
+ end.innerHTML='<h2>⏱ Zeit ist um!</h2><p class="info">Du hast <b>'+pts+' Punkte</b> ('+richtig+' richtig).</p>'+
+ (rec&&pts>0?'<p class="info">🏆 <b>Neuer Rekord!</b></p>':(h?'<p class="hs">Rekord: '+h+' Punkte</p>':''))+
+ (m.length?'<p><b>Die schauen wir uns nochmal an:</b></p><div class="miss">'+m.map(f=>'<div><img src="'+img(f.t.k,f.p)+'"><br>'+f.t.n+'</div>').join('')+'</div>':'<p class="info">Kein einziger Fehler – Wahnsinn! 🌟</p>')+
+ '<button class="btn big" onclick="start()">🔁 Nochmal</button><button class="btn" onclick="end.style.display=\'none\';menu.style.display=\'\';showHs()">⚙ Menü</button>'}
+if("serviceWorker"in navigator)navigator.serviceWorker.register("../sw.js");
+</script></body></html>

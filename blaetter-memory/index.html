@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Blätter-Memory</title>
+<link rel="manifest" href="../manifest.json"><meta name="theme-color" content="#4f8f2f"><link rel="apple-touch-icon" href="../icon-192.png"><link rel="icon" href="../icon-192.png">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:"Comic Sans MS","Chalkboard SE",sans-serif;background:#eaf7e1;color:#24331b}
+header{background:#4f8f2f;color:#fff;padding:10px 12px;text-align:center;position:relative}header h1{margin:0;font-size:26px}
+.home{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;font-size:15px;background:rgba(255,255,255,.2);padding:6px 10px;border-radius:12px}
+main{max-width:960px;margin:0 auto;padding:10px 12px 40px;text-align:center}
+.btn{font:inherit;font-size:19px;padding:10px 18px;border-radius:14px;border:3px solid #4f8f2f;background:#fff;cursor:pointer;margin:5px}.btn.on,.btn:hover{background:#ffd54a}
+.big{font-size:24px;padding:14px 28px;background:#ffd54a}
+.info{font-size:20px;margin:8px 0}.hs{font-size:17px;color:#5a6e4a}
+.grid{display:grid;gap:8px;margin:10px auto;max-width:760px}
+.c{aspect-ratio:3/4;perspective:700px;cursor:pointer}
+.in{position:relative;width:100%;height:100%;transition:transform .45s;transform-style:preserve-3d}
+.c.up .in,.c.done .in{transform:rotateY(180deg)}
+.f,.b{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;border:3px solid #4f8f2f}
+.f{background:#4f8f2f repeating-linear-gradient(45deg,#5a9c38 0 10px,#4f8f2f 10px 20px);font-size:38px}
+.b{background:#fff;transform:rotateY(180deg);padding:4px}
+.b img{max-width:100%;max-height:78%;object-fit:contain}.b span{font-size:15px;font-weight:bold;margin-top:2px}
+.c.done .b{border-color:#2e9e3e;background:#c9f2c6}.c.done{animation:pop .4s}
+.c.bad .b{border-color:#d33;background:#ffe0e0}
+@keyframes pop{50%{transform:scale(1.08)}}
+#win{display:none;background:#fff;border-radius:20px;padding:16px;border:4px solid #ffd54a;margin:12px auto;max-width:440px}
+</style></head><body>
+<header><a class="home" href="../">⬅ Start</a><h1>🍂 Blätter-Memory</h1></header>
+<main>
+<div id="menu">
+<p class="info">Finde immer den <b>Baum</b> und das passende <b>Blatt</b> oder die passende <b>Frucht</b>!</p>
+<p><b>Was suchen wir?</b><br><button class="btn on" data-m="blatt">🍃 Blätter</button><button class="btn" data-m="frucht">🌰 Früchte</button><button class="btn" data-m="mix">🔀 Gemischt</button></p>
+<p><b>Wie viele Paare?</b><br><button class="btn" data-p="4">4 · leicht</button><button class="btn on" data-p="6">6 · mittel</button><button class="btn" data-p="8">8 · schwer</button></p>
+<button class="btn big" id="go">▶ Los geht's!</button>
+<p class="hs" id="hs"></p>
+</div>
+<div id="game" style="display:none">
+<p class="info">Züge: <b id="z">0</b> · Paare: <b id="pa">0</b> / <b id="pg">0</b></p>
+<div class="grid" id="g"></div>
+<div id="win"></div>
+<button class="btn" id="back">⚙ Neues Spiel</button>
+</div>
+</main>
+<script>
+const T=[{k:'eiche',n:'Eiche',t:'L'},{k:'ahorn',n:'Ahorn',t:'L'},{k:'buche',n:'Buche',t:'L'},{k:'linde',n:'Linde',t:'L'},{k:'birke',n:'Birke',t:'L'},{k:'kastanie',n:'Kastanie',t:'L'},{k:'fichte',n:'Fichte',t:'N'},{k:'kiefer',n:'Kiefer',t:'N'},{k:'tanne',n:'Tanne',t:'N'},{k:'laerche',n:'Lärche',t:'N'},{k:'eibe',n:'Eibe',t:'N'}];
+const img=(k,p)=>`../baum-detektiv/img/${k}_${p}.jpg`;
+const shuffle=a=>a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(v=>v[1]);
+let AC=null;function tone(f,d,ty,w){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const o=AC.createOscillator(),g=AC.createGain();o.type=ty||'sine';o.frequency.value=f;g.gain.setValueAtTime(.18,AC.currentTime+(w||0));g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+(w||0)+d);o.connect(g).connect(AC.destination);o.start(AC.currentTime+(w||0));o.stop(AC.currentTime+(w||0)+d)}catch(e){}}
+const sOk=()=>{tone(660,.15);tone(880,.2,'sine',.1)},sBad=()=>tone(180,.25,'square'),sWin=()=>[523,659,784,1047].forEach((f,i)=>tone(f,.3,'triangle',i*.13));
+const ls={get:(k)=>{try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+function confetti(){const e=['🍂','🍁','🌰','⭐','🎉','🌲'];for(let i=0;i<40;i++){const s=document.createElement('div');s.textContent=e[i%6];s.style.cssText=`position:fixed;top:-40px;left:${Math.random()*100}vw;font-size:${24+Math.random()*20}px;z-index:99;transition:transform ${2+Math.random()*2}s linear,opacity 1s 2.5s;pointer-events:none`;document.body.appendChild(s);requestAnimationFrame(()=>requestAnimationFrame(()=>{s.style.transform=`translateY(110vh) rotate(${Math.random()*720}deg)`;s.style.opacity=0}));setTimeout(()=>s.remove(),4500)}}
+let mode='blatt',pairs=6,open=[],lock=false,z=0,found=0;
+const key=()=>'mem_'+mode+'_'+pairs;
+document.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{mode=b.dataset.m;document.querySelectorAll('[data-m]').forEach(x=>x.classList.toggle('on',x===b));showHs()});
+document.querySelectorAll('[data-p]').forEach(b=>b.onclick=()=>{pairs=+b.dataset.p;document.querySelectorAll('[data-p]').forEach(x=>x.classList.toggle('on',x===b));showHs()});
+function showHs(){const h=ls.get(key());document.getElementById('hs').textContent=h?'🏆 Dein Rekord hier: '+h+' Züge':'Noch kein Rekord – stell einen auf!'}
+showHs();
+document.getElementById('go').onclick=start;document.getElementById('back').onclick=()=>{game.style.display='none';menu.style.display='';showHs()};
+function start(){menu.style.display='none';game.style.display='';win.style.display='none';z=0;found=0;open=[];lock=false;
+ const trees=shuffle(T).slice(0,pairs);let cards=[];
+ trees.forEach(t=>{const p=mode==='mix'?(Math.random()<.5?'blatt':'frucht'):mode;
+  cards.push({id:t.k,src:img(t.k,'baum'),lab:t.n});cards.push({id:t.k,src:img(t.k,p),lab:p==='blatt'?(t.t==='N'?'Nadeln':'Blatt'):'Frucht'})});
+ cards=shuffle(cards);const g=document.getElementById('g');g.innerHTML='';
+ g.style.gridTemplateColumns='repeat('+(innerWidth>700?(pairs===4?4:pairs===6?6:8):4)+',1fr)';
+ cards.forEach(c=>{const d=document.createElement('div');d.className='c';d.dataset.id=c.id;
+  d.innerHTML='<div class="in"><div class="f">🌳</div><div class="b"><img src="'+c.src+'"><span>'+c.lab+'</span></div></div>';
+  d.onclick=()=>flip(d);g.appendChild(d)});
+ upd()}
+function upd(){document.getElementById('z').textContent=z;document.getElementById('pa').textContent=found;document.getElementById('pg').textContent=pairs}
+function flip(d){if(lock||d.classList.contains('up')||d.classList.contains('done'))return;tone(520,.06);d.classList.add('up');open.push(d);
+ if(open.length<2)return;z++;upd();const [a,b]=open;open=[];
+ if(a.dataset.id===b.dataset.id){setTimeout(()=>{a.classList.add('done');b.classList.add('done');sOk();found++;upd();if(found===pairs)fin()},350)}
+ else{lock=true;setTimeout(()=>{a.classList.add('bad');b.classList.add('bad');sBad()},400);setTimeout(()=>{a.classList.remove('up','bad');b.classList.remove('up','bad');lock=false},1400)}}
+function fin(){const h=ls.get(key()),rec=!h||z<h;if(rec)ls.set(key(),z);sWin();confetti();
+ const w=document.getElementById('win');w.style.display='block';
+ w.innerHTML='<h2>🎉 Geschafft!</h2><p class="info">Du hast alle '+pairs+' Paare in <b>'+z+' Zügen</b> gefunden.</p>'+(rec?'<p class="info">🏆 <b>Neuer Rekord!</b></p>':'<p class="hs">Rekord: '+h+' Züge</p>')+'<button class="btn big" onclick="start()">🔁 Nochmal</button>'}
+if("serviceWorker"in navigator)navigator.serviceWorker.register("../sw.js");
+</script></body></html>
