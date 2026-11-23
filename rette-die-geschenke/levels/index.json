@@ -1,0 +1,185 @@
+{
+ "title": "Rette die Geschenke!",
+ "worlds": [
+  {
+   "id": 0,
+   "name": "Einführung: Wichtel-Alarm!",
+   "levels": [
+    {
+     "id": "i-1",
+     "name": "Im Weihnachtsdorf"
+    },
+    {
+     "id": "i-2",
+     "name": "Freche Wichtel"
+    },
+    {
+     "id": "i-3",
+     "name": "Das Wichteltor"
+    },
+    {
+     "id": "i-4",
+     "name": "Einbruch in der Werkstatt"
+    }
+   ]
+  },
+  {
+   "id": 1,
+   "name": "Verschneiter Wald",
+   "levels": [
+    {
+     "id": "w1-1",
+     "name": "Der Wald erwacht"
+    },
+    {
+     "id": "w1-2",
+     "name": "Die Tannenhügel"
+    },
+    {
+     "id": "w1-3",
+     "name": "Mondscheinlichtung"
+    }
+   ]
+  },
+  {
+   "id": 2,
+   "name": "Eisberge",
+   "levels": [
+    {
+     "id": "w2-1",
+     "name": "Glitzereis"
+    },
+    {
+     "id": "w2-2",
+     "name": "Schollensprung"
+    },
+    {
+     "id": "w2-3",
+     "name": "Rutschpartie"
+    },
+    {
+     "id": "w2-4",
+     "name": "Eiszapfenhöhle"
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "name": "Dächer der Stadt",
+   "levels": [
+    {
+     "id": "w3-1",
+     "name": "Über den Dächern"
+    },
+    {
+     "id": "w3-2",
+     "name": "Schornsteinfeger"
+    },
+    {
+     "id": "w3-3",
+     "name": "Rudolphs Flug"
+    },
+    {
+     "id": "w3-4",
+     "name": "Glockenturm"
+    }
+   ]
+  },
+  {
+   "id": 4,
+   "name": "Wichtelwerkstatt",
+   "levels": [
+    {
+     "id": "w4-1",
+     "name": "Fließband-Chaos"
+    },
+    {
+     "id": "w4-2",
+     "name": "Paketberge"
+    },
+    {
+     "id": "w4-3",
+     "name": "Roboterhalle"
+    },
+    {
+     "id": "w4-4",
+     "name": "Wichtels Lager"
+    }
+   ]
+  },
+  {
+   "id": 5,
+   "name": "Wichtelburg",
+   "levels": [
+    {
+     "id": "w5-1",
+     "name": "Das Burgtor"
+    },
+    {
+     "id": "w5-2",
+     "name": "Eisbrücken"
+    },
+    {
+     "id": "w5-3",
+     "name": "Wichtelwachen"
+    },
+    {
+     "id": "w5-4",
+     "name": "Die Thronsaal-Treppe"
+    },
+    {
+     "id": "w5-boss",
+     "name": "Der Wichtelkönig"
+    }
+   ]
+  },
+  {
+   "id": 6,
+   "name": "Bonus: Rudolphs Sternenflüge",
+   "levels": [
+    {
+     "id": "b-1",
+     "name": "Sternenflug über den Wald"
+    },
+    {
+     "id": "b-2",
+     "name": "Sternenflug übers Eis"
+    },
+    {
+     "id": "b-3",
+     "name": "Sternenflug über die Stadt"
+    },
+    {
+     "id": "b-4",
+     "name": "Sternenflug zur Burg"
+    }
+   ]
+  }
+ ],
+ "calendar": [
+  "w1-1",
+  "w1-2",
+  "w1-3",
+  "w2-1",
+  "w2-2",
+  "w2-3",
+  "w2-4",
+  "w3-1",
+  "w3-2",
+  "w3-3",
+  "w3-4",
+  "w4-1",
+  "w4-2",
+  "w4-3",
+  "w4-4",
+  "w5-1",
+  "w5-2",
+  "w5-3",
+  "w5-4",
+  "b-1",
+  "b-2",
+  "b-3",
+  "b-4",
+  "w5-boss"
+ ]
+}
