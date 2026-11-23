@@ -100,10 +100,18 @@ const Touch = { left: false, right: false, jump: false, throw: false };
 class GameScene extends Phaser.Scene {
   constructor() { super('game'); }
   init(d) { this.levelId = d.id; }
-  preload() { if (!this.cache.json.exists(this.levelId)) this.load.json(this.levelId, `levels/${this.levelId}.json`); }
+  preload() {
+    if (!this.cache.json.exists(this.levelId)) this.load.json(this.levelId, `levels/${this.levelId}.json`);
+    // Gezeichnete Sprite-Sheets (doppelte Auflösung, werden mit Faktor 0,5 angezeigt)
+    const SH = { santa: [90, 105], wichtel: [72, 84], pinguin: [96, 112], robot: [72, 84], schnee: [102, 119], items: [80, 80] };
+    for (const [k, [w, h]] of Object.entries(SH)) if (!this.textures.exists('S_' + k)) this.load.spritesheet('S_' + k, `assets/sprites/${k}.png`, { frameWidth: w, frameHeight: h });
+  }
 
   create() {
     makeTextures(this);
+    const A = this.anims, mk = (key, tex, frames, rate, rep = -1) => { if (!A.exists(key)) A.create({ key, frames: A.generateFrameNumbers(tex, { frames }), frameRate: rate, repeat: rep }); };
+    mk('s-run', 'S_santa', [1, 2, 3, 4, 5, 6], 13); mk('w-walk', 'S_wichtel', [0, 1, 2, 3], 8);
+    mk('p-slide', 'S_pinguin', [0, 1], 6); mk('r-walk', 'S_robot', [0, 1], 4); mk('m-throw', 'S_schnee', [0, 1, 2, 0], 8, 0);
     const L = this.cache.json.get(this.levelId); this.L = L;
     const map = L.map; this.map = map; this.cols = map[0].length;
     const WW = this.cols * T;
@@ -160,7 +168,7 @@ class GameScene extends Phaser.Scene {
           break; }
         case ')': case '(': { const b = this.solids.create(cx, cy, 'belt1'); b.setFlipX(ch === '('); this.belts.push(b); break; }
         case 'X': this.solids.create(cx, cy, 'box' + (1 + (x + y) % 3)); break;
-        case 'r': { const e = this.enemies.create(cx, bottom - 22, 'robot'); e.setData('k', 'r'); e.dir = -1; e.body.setSize(30, 40).setOffset(5, 4); e.setDepth(3); break; }
+        case 'r': { const e = this.enemies.create(cx, bottom - 22, 'S_robot', 0).setScale(.5); e.setData('k', 'r'); e.dir = -1; e.body.setSize(54, 66).setOffset(9, 14); e.setDepth(3); e.play('r-walk'); break; }
         case 'b': { const c = this.crumbles.create(cx, y * T + 10, 'crumble'); c.body.checkCollision.down = false; c.body.checkCollision.left = false; c.body.checkCollision.right = false; c.setDepth(7); break; }
         case 'Q': this.makeKing(cx, bottom); break;
         case 'k': { const c = this.cats.create(cx, bottom - 13, 'cat'); c.setDepth(2); c.body.setSize(40, 22).setOffset(2, 4); break; }
@@ -177,15 +185,15 @@ class GameScene extends Phaser.Scene {
             this.tweens.add({ targets: f, angle: { from: -1.5, to: 1.5 }, duration: 1300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
           }
           break; }
-        case 'p': { const e = this.enemies.create(cx, bottom - 16, 'pinguin'); e.setData('k', 'p'); e.dir = -1; e.body.setSize(36, 24).setOffset(6, 6); e.setDepth(3); break; }
+        case 'p': { const e = this.enemies.create(cx, bottom - 26, 'S_pinguin', 0).setScale(.5); e.setData('k', 'p'); e.dir = -1; e.body.setSize(72, 40).setOffset(12, 62); e.setDepth(3); e.play('p-slide'); break; }
         case '=': { const p = this.ledges.create(cx, y * T + 10, 'ledge'); p.body.checkCollision.down = false; p.body.checkCollision.left = false; p.body.checkCollision.right = false; break; }
         case 'g': this.addItem(cx, cy, Phaser.Utils.Array.GetRandom(['gift', 'gift2', 'gift3']), 'gift'); this.totalGifts++; break;
         case 'G': this.addItem(cx, cy, 'giftgold', 'gold'); this.totalGifts++; break;
         case 'L': this.addItem(cx, cy, 'lebkuchen', 'life'); break;
         case 'B': this.addItem(cx, cy, 'bell', 'bell'); break;
         case 'S': this.addItem(cx, cy, 'snowpow', 'snow'); break;
-        case 'w': { const e = this.enemies.create(cx, bottom - 20, 'wichtel'); e.setData('k', 'w'); e.dir = -1; e.body.setSize(26, 32).setOffset(5, 7); e.setDepth(3); break; }
-        case 'm': { const e = this.enemies.create(cx, bottom - 32, 'schneemann'); e.setData('k', 's'); e.nextThrow = 0; e.body.setSize(32, 56).setOffset(8, 8); e.setDepth(3); break; }
+        case 'w': { const e = this.enemies.create(cx, bottom - 20, 'S_wichtel', 0).setScale(.5); e.setData('k', 'w'); e.dir = -1; e.body.setSize(52, 60).setOffset(10, 17); e.setDepth(3); e.play({ key: 'w-walk', startFrame: x % 4 }); break; }
+        case 'm': { const e = this.enemies.create(cx, bottom - 30, 'S_schnee', 0).setScale(.5); e.setData('k', 's'); e.nextThrow = 0; e.body.setSize(60, 96).setOffset(21, 20); e.setDepth(3); break; }
         case 'i': { const ic = this.icicles.create(cx, y * T + 20, 'icicle'); ic.state = 'hang'; ic.body.setSize(14, 34).setOffset(3, 2); ic.setDepth(2); break; }
         case 'P': start = { x: cx, y: bottom - 26 }; break;
         case 'C': { const c = this.marks.create(cx, bottom - 40, 'cane'); c.setData('k', 'check'); c.setTint(0x8a9ab8); c.setDepth(1); break; }
@@ -203,8 +211,8 @@ class GameScene extends Phaser.Scene {
     }).setOrigin(.5).setDepth(1));
 
     // Spielfigur
-    const p = this.physics.add.sprite(start.x, start.y, 'santa').setDepth(5);
-    p.body.setSize(24, 46).setOffset(8, 6);
+    const p = this.physics.add.sprite(start.x, start.y, 'S_santa', 0).setScale(.5).setDepth(5);
+    p.body.setSize(48, 88).setOffset(21, 8);
     p.setCollideWorldBounds(true); p.setMaxVelocity(240, 950);
     this.player = p; this.respawn = { ...start };
 
@@ -251,7 +259,8 @@ class GameScene extends Phaser.Scene {
   }
 
   addItem(x, y, key, type) {
-    const it = this.items.create(x, y, key); it.setData('t', type); it.setDepth(2);
+    const IF = { gift: 0, gift2: 1, gift3: 2, giftgold: 3, lebkuchen: 4, bell: 5, snowpow: 6 };
+    const it = key in IF ? this.items.create(x, y, 'S_items', IF[key]).setScale(.5).refreshBody() : this.items.create(x, y, key); it.setData('t', type); it.setDepth(2);
     this.tweens.add({ targets: it, y: y - 5, duration: 700 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
     return it;
   }
@@ -261,13 +270,13 @@ class GameScene extends Phaser.Scene {
     const c = this.add.container(0, 0).setScrollFactor(0).setDepth(100);
     const bg = this.add.graphics(); bg.fillStyle(0x081430, .6); bg.fillRoundedRect(12, 12, 500, 48, 16);
     c.add(bg);
-    c.add(this.add.image(38, 36, 'gift').setScale(.9));
+    c.add(this.add.image(38, 36, 'S_items', 0).setScale(.5));
     this.tGifts = this.add.text(56, 21, '', st); c.add(this.tGifts);
-    this.goldIcons = [0, 1, 2].map(i => { const im = this.add.image(170 + i * 30, 36, 'giftgold').setScale(.8).setAlpha(.25); c.add(im); return im; });
-    c.add(this.add.image(278, 37, 'lebkuchen').setScale(.85));
+    this.goldIcons = [0, 1, 2].map(i => { const im = this.add.image(170 + i * 30, 36, 'S_items', 3).setScale(.42).setAlpha(.25); c.add(im); return im; });
+    c.add(this.add.image(278, 37, 'S_items', 4).setScale(.45));
     this.tLives = this.add.text(296, 21, '', st); c.add(this.tLives);
     this.tTime = this.add.text(350, 21, '', st); c.add(this.tTime);
-    this.snowIcon = this.add.image(480, 36, 'snowpow').setVisible(false); c.add(this.snowIcon);
+    this.snowIcon = this.add.image(480, 36, 'S_items', 6).setScale(.5).setVisible(false); c.add(this.snowIcon);
     this.updHud();
   }
   updHud() {
@@ -324,7 +333,7 @@ class GameScene extends Phaser.Scene {
         let vy = c.jump ? (p.y < 70 ? 0 : -230) : c.down ? 230 : 15;
         if (!ground && p.y > 9 * T && vy > -120) vy = -120;
         p.setVelocityY(vy);
-        p.setTexture('santa_jump');
+        p.anims.stop(); p.setFrame(7);
         this.rudolph.setPosition(p.x + 56, p.y - 6 + Math.sin(time / 120) * 3);
         if (time > this.nextTing) { this.nextTing = time + 380; Sfx.ting(); }
         this.afterMove(time, c, true);
@@ -371,10 +380,18 @@ class GameScene extends Phaser.Scene {
     }
 
     // Aussehen
-    if (this.sliding) p.setTexture('santa_sled');
-    else if (!onGround) p.setTexture('santa_jump');
-    else if (Math.abs(p.body.velocity.x) > 25) p.setTexture(Math.floor(time / 110) % 2 ? 'santa2' : 'santa');
-    else p.setTexture('santa');
+    const hurtPose = this.invulnUntil - time > 1300;
+    if (onGround && !this.wasGround && this.airVy > 320) { this.dust(p.x, p.body.bottom, 6); this.landUntil = time + 110; }
+    this.wasGround = onGround; this.airVy = onGround ? 0 : Math.max(this.airVy || 0, p.body.velocity.y);
+    const fr = f => { p.anims.stop(); if (p.frame.name !== f) p.setFrame(f); };
+    if (this.sliding) fr(11);
+    else if (hurtPose) fr(10);
+    else if (!onGround) fr(p.body.velocity.y < 0 ? 7 : 8);
+    else if (this.landUntil > time) fr(9);
+    else if (Math.abs(p.body.velocity.x) > 25) {
+      if (!p.anims.isPlaying) p.play('s-run');
+      if (time > (this.nextKick || 0)) { this.nextKick = time + 200; this.dust(p.x - (p.flipX ? -12 : 12), p.body.bottom, 2); }
+    } else fr(0);
     const bell = this.bellUntil > time;
     if (bell) { p.setTint(Math.floor(time / 90) % 2 ? 0xfff3a0 : 0xffffff); if (time > this.nextTing) { this.nextTing = time + 450; Sfx.ting(); } }
     else p.clearTint();
@@ -399,15 +416,14 @@ class GameScene extends Phaser.Scene {
           if (!this.solidAt(ax, by)) e.dir *= -1;
         }
         e.setVelocityX(e.dir * sp); e.flipX = e.dir < 0;
-        if (kind === 'w') e.setTexture(Math.floor(time / 200) % 2 ? 'wichtel' : 'wichtel2');
-        else if (kind === 'r') e.setTexture(Math.floor(time / 250) % 2 ? 'robot' : 'robot2');
-        else e.setTexture(Math.floor(time / 160) % 2 ? 'pinguin' : 'pinguin2');
+
       } else {
         e.setVelocityX(0);
         const dx = p.x - e.x; e.flipX = dx < 0;
         if (Math.abs(dx) < T * 9 && Math.abs(dx) > 30 && Math.abs(p.y - e.y) < T * 4 && time > e.nextThrow) {
           e.nextThrow = time + 2800;
           if (e.nextThrow - 2800 > 0 && e._armed) {
+            e.play('m-throw');
             const s = Math.sign(dx), b = this.eballs.create(e.x + s * 22, e.y - 20, 'snowball');
             b.setVelocity(s * 240, -280); b.lifeEnd = time + 4000; b.setDepth(4);
           }
@@ -453,6 +469,11 @@ class GameScene extends Phaser.Scene {
     }
     else if (t === 'snow') { this.hasSnow = true; this.snowIcon.setVisible(true); Sfx.life(); UI.toast(window.RDG_isTouch ? 'Schneebälle! Tipp auf die Schneeflocke' : 'Schneebälle! Werfen mit X'); UI.setThrow(true); }
     this.sparkle(it.x, it.y);
+    if (t === 'gift' || t === 'gold') {
+      const cam = this.cameras.main, fly = this.add.image(it.x - cam.scrollX, it.y - cam.scrollY, it.texture.key, it.frame.name).setScale(.5).setScrollFactor(0).setDepth(110);
+      const tx = t === 'gold' ? 170 + (this.gold - 1) * 30 : 38;
+      this.tweens.add({ targets: fly, x: tx, y: 36, scale: .25, duration: 520, ease: 'Cubic.in', onComplete: () => { fly.destroy(); this.tweens.add({ targets: this.tGifts, scale: 1.25, duration: 90, yoyo: true }); } });
+    }
     it.destroy(); this.updHud();
   }
 
@@ -487,8 +508,8 @@ class GameScene extends Phaser.Scene {
   }
 
   makeKing(x, bottom) {
-    const k = this.physics.add.sprite(x, bottom - 60, 'wichtel').setScale(2.8).setDepth(4);
-    k.body.setSize(26, 32).setOffset(5, 7);
+    const k = this.physics.add.sprite(x, bottom - 60, 'S_wichtel', 0).setScale(1.45).setDepth(4);
+    k.body.setSize(52, 60).setOffset(10, 17); k.play('w-walk');
     k.hp = 3; k.dir = -1; k.nextThrow = 2500; k.inv = 0; k.dead = false;
     this.crown = this.add.image(x, 0, 'crown').setDepth(5).setScale(1.2);
     this.king = k;
@@ -503,7 +524,7 @@ class GameScene extends Phaser.Scene {
     if (time > k.inv) k.setVelocityX(k.dir * (70 + rage * 50));
     else k.setVelocityX(0);
     k.flipX = k.dir < 0;
-    k.setTexture(Math.floor(time / 180) % 2 ? 'wichtel' : 'wichtel2');
+    k.anims.timeScale = 1 + rage * .5;
     k.setAlpha(time < k.inv ? (Math.floor(time / 90) % 2 ? .4 : 1) : 1);
     if (rage > 0 && k.body.blocked.down && Math.random() < .006 + rage * .004) k.setVelocityY(-560);
     this.crown.setPosition(k.x + (k.flipX ? 4 : -4), k.body.top - 14);
@@ -537,7 +558,7 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: [k, this.crown], angle: 720, scale: 0, alpha: 0, duration: 1400, ease: 'Quad.in' });
     this.time.delayedCall(1200, () => this.poof(k.x, k.y, 30));
     for (let i = 0; i < 24; i++) {
-      const g = this.add.image(Phaser.Math.Between(60, GW - 60), -40 - Math.random() * 300, Phaser.Utils.Array.GetRandom(['gift', 'gift2', 'gift3', 'giftgold'])).setDepth(8).setScrollFactor(0);
+      const g = this.add.image(Phaser.Math.Between(60, GW - 60), -40 - Math.random() * 300, 'S_items', Phaser.Math.Between(0, 3)).setScale(.5).setDepth(8).setScrollFactor(0);
       this.tweens.add({ targets: g, y: GH - 120 + Math.random() * 40, angle: Phaser.Math.Between(-30, 30), duration: 1600 + Math.random() * 900, ease: 'Bounce.out' });
     }
     UI.toast('Der Wichtelkönig ist besiegt!');
@@ -557,6 +578,10 @@ class GameScene extends Phaser.Scene {
   sparkle(x, y) {
     const em = this.add.particles(x, y, 'spark', { speed: { min: 60, max: 160 }, lifespan: 450, scale: { start: 1.2, end: 0 }, emitting: false }).setDepth(6);
     em.explode(10); this.time.delayedCall(600, () => em.destroy());
+  }
+  dust(x, y, n) {
+    const em = this.add.particles(x, y - 4, 'puff', { speed: { min: 20, max: 70 }, angle: { min: 200, max: 340 }, lifespan: 380, scale: { start: .35, end: 0 }, alpha: { start: .8, end: 0 }, emitting: false }).setDepth(4);
+    em.explode(n); this.time.delayedCall(500, () => em.destroy());
   }
   shatter(ic) { if (!ic.active) return; this.poof(ic.x, ic.y + 10, 6); ic.destroy(); }
 
@@ -594,7 +619,7 @@ class GameScene extends Phaser.Scene {
 
   finish() {
     this.done = true; const p = this.player, s = this.sleigh;
-    if (!this.L.boss) { p.body.enable = false; p.setTexture('santa_jump'); } p.clearTint().setAlpha(1);
+    if (!this.L.boss) { p.body.enable = false; p.anims.stop(); p.setFrame(7); } p.clearTint().setAlpha(1);
     Sfx.win();
     const secs = Math.round(this.elapsed / 1000), L = this.L;
     const stars = [this.gifts === this.totalGifts, !this.hitTaken, secs <= L.par];
