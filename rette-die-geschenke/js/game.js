@@ -358,7 +358,7 @@ class GameScene extends Phaser.Scene {
     }
 
     if (time - this.jumpBuf < 130 && time - this.lastGround < 110) {
-      p.setVelocityY(-610); this.jumpBuf = -1e9; this.lastGround = -1e9; Sfx.jump();
+      p.setVelocityY(-695); this.jumpBuf = -1e9; this.lastGround = -1e9; Sfx.jump();
     }
     if (!c.jump && p.body.velocity.y < -230 && !(this.boostUntil > time)) p.setVelocityY(-230);
 
