@@ -94,7 +94,7 @@ function makeTask(mode) {
 }
 
 // ---------- Eingabe vom Touch-Bildschirm ----------
-const Touch = { left: false, right: false, jump: false, throw: false };
+const Touch = { left: false, right: false, jump: false, throw: false, down: false };
 
 // ---------- Die Level-Szene ----------
 class GameScene extends Phaser.Scene {
@@ -295,7 +295,7 @@ class GameScene extends Phaser.Scene {
       right: k.RIGHT.isDown || k.D.isDown || Touch.right,
       jump: k.UP.isDown || k.SPACE.isDown || k.W.isDown || Touch.jump,
       thr: k.X.isDown || k.SHIFT.isDown || Touch.throw,
-      down: k.DOWN.isDown || k.S.isDown
+      down: k.DOWN.isDown || k.S.isDown || Touch.down
     };
     c.jumpP = c.jump && !this.prev.jump; c.thrP = c.thr && !this.prev.thr;
     this.prev = c; return c;
@@ -326,7 +326,7 @@ class GameScene extends Phaser.Scene {
       const tx = Math.floor(p.x / T);
       let ground = false; for (let ty = Math.floor(p.y / T); ty < 13; ty++) if (this.solidAt(tx, ty) || this.solidAt(tx + 1, ty)) { ground = true; break; }
       if ((time > this.flyUntil || (this.L.flyEnd && p.x > this.L.flyEnd * T)) && ground && (!this.L.flyEnd || p.x > this.L.flyEnd * T)) {
-        this.flying = false; p.body.setAllowGravity(true); p.setMaxVelocity(240, 950);
+        this.flying = false; p.body.setAllowGravity(true); p.setMaxVelocity(240, 950); UI.setFly(false);
         const r = this.rudolph; this.tweens.add({ targets: r, x: r.x + 500, y: r.y - 400, duration: 1200, onComplete: () => r.destroy() });
       } else {
         p.setAccelerationX(0); p.setVelocityX(290); p.flipX = false;
@@ -463,9 +463,9 @@ class GameScene extends Phaser.Scene {
     else if (t === 'bell') { this.bellUntil = this.time.now + 8000; Sfx.bell(); UI.toast('Glocke: 8 Sekunden unverwundbar!'); }
     else if (t === 'fly') {
       this.flying = true; this.flyUntil = this.time.now + (this.L.flyTime || 7000); this.sliding = false;
-      this.player.body.setAllowGravity(false); this.player.setMaxVelocity(300, 950);
+      this.player.body.setAllowGravity(false); this.player.setMaxVelocity(300, 950); UI.setFly(true);
       this.rudolph = this.add.image(it.x, it.y, 'rudolph').setDepth(5);
-      Sfx.bell(); UI.toast(window.RDG_isTouch ? 'Rudolph! Sprung-Knopf halten = hoch' : 'Rudolph! Leertaste halten = hoch');
+      Sfx.bell(); UI.toast(window.RDG_isTouch ? 'Rudolph! Pfeil hoch = steigen, Pfeil runter = sinken' : 'Rudolph! Leertaste = hoch, Pfeil runter = runter');
     }
     else if (t === 'snow') { this.hasSnow = true; this.snowIcon.setVisible(true); Sfx.life(); UI.toast(window.RDG_isTouch ? 'Schneebälle! Tipp auf die Schneeflocke' : 'Schneebälle! Werfen mit X'); UI.setThrow(true); }
     this.sparkle(it.x, it.y);

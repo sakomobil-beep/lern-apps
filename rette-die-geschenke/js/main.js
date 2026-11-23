@@ -100,7 +100,7 @@ function startLevel(id) {
   Sfx.init(); if (!Sfx.mg && Save.data.settings.music) Sfx.startMusic();
   current = id; closeModal();
   $('#menu').hidden = true; $('#settings').hidden = true;
-  $('#pauseBtn').hidden = false; $('#touch').hidden = !window.RDG_isTouch; setThrow(false);
+  $('#pauseBtn').hidden = false; $('#touch').hidden = !window.RDG_isTouch; setThrow(false); UI.setFly(false);
   game.scene.stop('game'); game.scene.start('game', { id });
 }
 
@@ -129,6 +129,7 @@ function story(k, then) {
 const UI = {
   toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 2600); },
   setThrow(on) { setThrow(on); },
+  setFly(on) { $('#tDown').hidden = !on; if (!on) Touch.down = false; },
   quiz(task, done) {
     modal(`<div class="gatehead"><svg viewBox="0 0 40 40" aria-hidden="true"><rect x="4" y="6" width="32" height="30" rx="4" fill="#9a6a3e"/><rect x="11" y="12" width="18" height="18" rx="4" fill="#fff" stroke="#d7192a" stroke-width="2.5"/><text x="20" y="27" text-anchor="middle" font-size="15" font-weight="700" fill="#d7192a">?</text></svg>
       <div><h2>Wichteltor!</h2><p>Das Tor geht nur mit der richtigen Antwort auf.</p></div></div>
