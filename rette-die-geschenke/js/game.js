@@ -8,7 +8,7 @@ const Save = {
   data: null,
   load() {
     let d = {}; try { d = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) {}
-    this.data = { levels: d.levels || {}, settings: Object.assign({ math: '20', music: true, sound: true }, d.settings || {}), papa: !!d.papa, doors: d.doors || {}, storySeen: !!d.storySeen };
+    this.data = { levels: d.levels || {}, settings: Object.assign({ math: '20', music: true, sound: true }, d.settings || {}), papa: !!d.papa, doors: d.doors || {}, storySeen: !!d.storySeen, resume: d.resume || null };
   },
   write() { try { localStorage.setItem(KEY, JSON.stringify(this.data)); } catch (e) {} },
   resetProgress() { this.data.levels = {}; this.data.papa = false; this.data.doors = {}; this.write(); }
@@ -99,7 +99,7 @@ const Touch = { left: false, right: false, jump: false, throw: false, down: fals
 // ---------- Die Level-Szene ----------
 class GameScene extends Phaser.Scene {
   constructor() { super('game'); }
-  init(d) { this.levelId = d.id; }
+  init(d) { this.levelId = d.id; this.wantResume = !!d.resume; }
   preload() {
     if (!this.cache.json.exists(this.levelId)) this.load.json(this.levelId, `levels/${this.levelId}.json`);
     // Gezeichnete Sprite-Sheets (doppelte Auflösung, werden mit Faktor 0,5 angezeigt)
@@ -196,9 +196,9 @@ class GameScene extends Phaser.Scene {
         case 'm': { const e = this.enemies.create(cx, bottom - 30, 'S_schnee', 0).setScale(.5); e.setData('k', 's'); e.nextThrow = 0; e.body.setSize(60, 96).setOffset(21, 20); e.setDepth(3); break; }
         case 'i': { const ic = this.icicles.create(cx, y * T + 20, 'icicle'); ic.state = 'hang'; ic.body.setSize(14, 34).setOffset(3, 2); ic.setDepth(2); break; }
         case 'P': start = { x: cx, y: bottom - 26 }; break;
-        case 'C': { const c = this.marks.create(cx, bottom - 40, 'cane'); c.setData('k', 'check'); c.setTint(0x8a9ab8); c.setDepth(1); break; }
+        case 'C': { const c = this.marks.create(cx, bottom - 40, 'cane'); c.setData('k', 'check'); c.setTint(0x8a9ab8); c.setDepth(1); c.tileKey = x + ',' + y; break; }
         case 'F': { const f = this.marks.create(cx + 30, bottom - 42, 'sleigh'); f.setData('k', 'goal'); f.body.setSize(90, 60).setOffset(20, 20); f.setDepth(1); this.sleigh = f; break; }
-        case 'R': if (mathOn) { const g = this.gates.create(cx, bottom - 48, 'gate'); g.setDepth(2); g.label = this.add.text(cx, bottom - 54, '?', { fontFamily: 'Fredoka, sans-serif', fontSize: '28px', color: '#d7192a', fontStyle: '700' }).setOrigin(.5).setDepth(2); } break;
+        case 'R': if (mathOn) { const g = this.gates.create(cx, bottom - 48, 'gate'); g.setDepth(2); g.tileKey = x + ',' + y; g.label = this.add.text(cx, bottom - 54, '?', { fontFamily: 'Fredoka, sans-serif', fontSize: '28px', color: '#d7192a', fontStyle: '700' }).setOrigin(.5).setDepth(2); } break;
         case 'T': this.add.image(cx, bottom + 2, ice ? 'crystal' : city ? 'xtree' : 'tree').setOrigin(.5, 1).setDepth(-1).setScale(.85 + ((x * 7) % 5) / 10); break;
       }
     }
@@ -250,7 +250,10 @@ class GameScene extends Phaser.Scene {
     this.lives = L.lives || 3; this.sliding = false; this.flyUntil = 0; this.flying = false; this.nextBoost = 0; this.hitTaken = false; this.hasSnow = false; this.done = false; this.quizOpen = false;
     this.elapsed = 0; this.invulnUntil = 0; this.bellUntil = 0; this.nextTing = 0; this.nextThrow = 0;
     this.jumpBuf = -1e9; this.lastGround = -1e9;
+    this.taken = new Set(); this.opened = new Set(); this.checks = new Set();
     this.makeHud();
+    const R = this.wantResume && Save.data.resume && Save.data.resume.id === L.id ? Save.data.resume : null;
+    if (R) this.applyResume(R);
 
     const banner = this.add.text(GW / 2, GH / 2 - 60, `${lvLabel(L.id)}  ${L.name}`, {
       fontFamily: 'Fredoka, sans-serif', fontSize: '44px', color: '#ffffff', fontStyle: '700', stroke: '#0b1d3a', strokeThickness: 8
@@ -258,10 +261,30 @@ class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: banner, alpha: 0, delay: 1600, duration: 700, onComplete: () => banner.destroy() });
   }
 
+  applyResume(R) {
+    R.taken.forEach(k => this.taken.add(k)); R.opened.forEach(k => this.opened.add(k)); R.checks.forEach(k => this.checks.add(k));
+    this.items.getChildren().slice().forEach(it => { if (this.taken.has(it.tileKey)) it.destroy(); });
+    this.gates.getChildren().slice().forEach(g => { if (this.opened.has(g.tileKey)) { g.label.destroy(); g.destroy(); } });
+    this.marks.getChildren().forEach(m => { if (m.getData('k') === 'check' && this.checks.has(m.tileKey)) { m.on = true; m.clearTint(); this.add.image(m.x + 7, m.y - 50, 'star').setDepth(2); } });
+    this.gifts = R.gifts; this.gold = R.gold; this.lives = R.lives; this.elapsed = R.elapsed; this.hitTaken = R.hit;
+    for (let i = 0; i < this.gold; i++) this.goldIcons[i].setAlpha(1);
+    if (R.snow) { this.hasSnow = true; this.snowIcon.setVisible(true); UI.setThrow(true); }
+    this.respawn = { ...R.respawn }; this.player.body.reset(R.respawn.x, R.respawn.y - 10);
+    this.updHud();
+  }
+  saveResume() {
+    if (this.done || !this.player) return;
+    Save.data.resume = { id: this.L.id, name: this.L.name, respawn: this.respawn, gifts: this.gifts, gold: this.gold, lives: this.lives,
+      elapsed: Math.round(this.elapsed), hit: this.hitTaken, snow: this.hasSnow, taken: [...this.taken], opened: [...this.opened], checks: [...this.checks] };
+    Save.write();
+  }
+  clearResume() { if (Save.data.resume) { Save.data.resume = null; Save.write(); } }
+
   addItem(x, y, key, type) {
     const IF = { gift: 0, gift2: 1, gift3: 2, giftgold: 3, lebkuchen: 4, bell: 5, snowpow: 6 };
     const it = key in IF ? this.items.create(x, y, 'S_items', IF[key]).setScale(.5).refreshBody() : this.items.create(x, y, key); it.setData('t', type); it.setDepth(2);
     this.tweens.add({ targets: it, y: y - 5, duration: 700 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+    it.tileKey = `${Math.floor(x / T)},${Math.floor(y / T)}`;
     return it;
   }
 
@@ -293,11 +316,13 @@ class GameScene extends Phaser.Scene {
     const c = {
       left: k.LEFT.isDown || k.A.isDown || Touch.left,
       right: k.RIGHT.isDown || k.D.isDown || Touch.right,
-      jump: k.UP.isDown || k.SPACE.isDown || k.W.isDown || Touch.jump,
+      jump: k.UP.isDown || k.SPACE.isDown || k.W.isDown || Touch.jump || performance.now() < (Touch.jumpHold || 0),
       thr: k.X.isDown || k.SHIFT.isDown || Touch.throw,
       down: k.DOWN.isDown || k.S.isDown || Touch.down
     };
-    c.jumpP = c.jump && !this.prev.jump; c.thrP = c.thr && !this.prev.thr;
+    // Tipp-Knöpfe merken sich jeden Druck, auch wenn er kürzer als ein Bild war
+    c.jumpP = (c.jump && !this.prev.jump) || !!Touch.jumpTap; c.thrP = (c.thr && !this.prev.thr) || !!Touch.throwTap;
+    Touch.jumpTap = false; Touch.throwTap = false;
     this.prev = c; return c;
   }
 
@@ -307,6 +332,7 @@ class GameScene extends Phaser.Scene {
     this.forest.tilePositionX = cam.scrollX * .4;
     if (this.done || this.quizOpen) return;
     this.elapsed += delta;
+    if (time > (this.nextAutoSave || 0)) { this.nextAutoSave = time + 8000; if (this.elapsed > 2000) this.saveResume(); }
     if (Math.floor(this.elapsed / 1000) !== this._lastSec) { this._lastSec = Math.floor(this.elapsed / 1000); this.updHud(); }
 
     const p = this.player, c = this.ctrl();
@@ -366,7 +392,7 @@ class GameScene extends Phaser.Scene {
       for (const b of this.belts) b.setTexture(this.beltF ? 'belt2' : 'belt1');
     }
 
-    if (time - this.jumpBuf < 130 && time - this.lastGround < 110) {
+    if (time - this.jumpBuf < 180 && time - this.lastGround < 140) {
       p.setVelocityY(-695); this.jumpBuf = -1e9; this.lastGround = -1e9; Sfx.jump();
     }
     if (!c.jump && p.body.velocity.y < -230 && !(this.boostUntil > time)) p.setVelocityY(-230);
@@ -455,7 +481,7 @@ class GameScene extends Phaser.Scene {
   }
 
   collect(it) {
-    if (it.taken) return; it.taken = true;
+    if (it.taken) return; it.taken = true; this.taken.add(it.tileKey);
     const t = it.getData('t');
     if (t === 'gift') { this.gifts++; Sfx.gift(); }
     else if (t === 'gold') { this.gifts++; this.goldIcons[this.gold].setAlpha(1); this.gold++; Sfx.gold(); }
@@ -480,7 +506,7 @@ class GameScene extends Phaser.Scene {
   touchMark(m) {
     const k = m.getData('k');
     if (k === 'check' && !m.on) {
-      m.on = true; m.clearTint(); this.respawn = { x: m.x, y: m.y };
+      m.on = true; m.clearTint(); this.respawn = { x: m.x, y: m.y }; this.checks.add(m.tileKey); this.saveResume();
       const s = this.add.image(m.x + 7, m.y - 50, 'star').setDepth(2);
       this.tweens.add({ targets: s, angle: 360, duration: 3000, repeat: -1 });
       this.sparkle(m.x, m.y - 30); Sfx.gift();
@@ -608,12 +634,12 @@ class GameScene extends Phaser.Scene {
     Object.keys(Touch).forEach(k => Touch[k] = false);
     UI.quiz(makeTask(Save.data.settings.math), () => {
       this.quizOpen = false; this.physics.resume(); this.input.keyboard.resetKeys();
-      this.poof(g.x, g.y, 16); Sfx.gate(); g.label.destroy(); g.destroy();
+      this.poof(g.x, g.y, 16); Sfx.gate(); this.opened.add(g.tileKey); g.label.destroy(); g.destroy(); this.saveResume();
     });
   }
 
   gameOver() {
-    this.done = true; this.physics.pause();
+    this.clearResume(); this.done = true; this.physics.pause();
     this.time.delayedCall(500, () => UI.gameOver(this.levelId));
   }
 
@@ -623,6 +649,7 @@ class GameScene extends Phaser.Scene {
     Sfx.win();
     const secs = Math.round(this.elapsed / 1000), L = this.L;
     const stars = [this.gifts === this.totalGifts, !this.hitTaken, secs <= L.par];
+    delete Save.data.resume;
     const rec = Save.data.levels[L.id] || { stars: [false, false, false], best: null, done: false };
     rec.stars = rec.stars.map((v, i) => v || stars[i]);
     rec.best = rec.best === null ? secs : Math.min(rec.best, secs);

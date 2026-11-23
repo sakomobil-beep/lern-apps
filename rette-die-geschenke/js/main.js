@@ -68,6 +68,9 @@ function openDoor(n) {
 
 function renderMenu() {
   if (!INDEX) return;
+  const R = Save.data.resume;
+  $('#resume').innerHTML = R ? `<button class="resbtn" id="resBtn"><b>Weiterspielen</b><span>${RDG.lvLabel(R.id)} · ${R.name} – da, wo du aufgehört hast</span></button>` : '';
+  if (R) $('#resBtn').onclick = () => startLevel(R.id, true);
   renderCalendar();
   const today = new Date(), days = Math.ceil((new Date(today.getFullYear(), 11, 1) - today) / 864e5);
   $('#calnote').textContent = today.getMonth() < 11 && today.getMonth() >= 9 && !Save.data.papa
@@ -96,12 +99,12 @@ function showMenu() {
   renderMenu();
 }
 
-function startLevel(id) {
+function startLevel(id, resume) {
   Sfx.init(); if (!Sfx.mg && Save.data.settings.music) Sfx.startMusic();
   current = id; closeModal();
   $('#menu').hidden = true; $('#settings').hidden = true;
   $('#pauseBtn').hidden = false; $('#touch').hidden = !window.RDG_isTouch; setThrow(false); UI.setFly(false);
-  game.scene.stop('game'); game.scene.start('game', { id });
+  game.scene.stop('game'); game.scene.start('game', { id, resume: !!resume });
 }
 
 // ---------- Fenster ----------
@@ -223,12 +226,18 @@ $('#resetYes').onclick = () => { Save.resetProgress(); $('#resetAsk').hidden = t
 // ---------- Touch-Knöpfe ----------
 document.querySelectorAll('#touch [data-k]').forEach(b => {
   const k = b.dataset.k;
-  const on = e => { e.preventDefault(); Touch[k] = true; b.classList.add('down'); try { b.setPointerCapture(e.pointerId); } catch (_) {} };
+  const on = e => { e.preventDefault(); Touch[k] = true; Touch[k + 'Tap'] = true; Touch[k + 'Hold'] = performance.now() + 200; b.classList.add('down'); try { b.setPointerCapture(e.pointerId); } catch (_) {} };
   const off = e => { e.preventDefault(); Touch[k] = false; b.classList.remove('down'); };
   b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off);
   b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
   b.addEventListener('contextmenu', e => e.preventDefault());
 });
+
+// ---------- Speichern beim Schließen ----------
+const saveNow = () => { const sc = game.scene.getScene('game'); if (sc && game.scene.isActive('game') || (sc && game.scene.isPaused('game'))) sc.saveResume(); };
+addEventListener('pagehide', saveNow);
+document.addEventListener('visibilitychange', () => { if (document.hidden) saveNow(); });
+try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); } catch (e) {}
 
 // ---------- Start ----------
 fetch('levels/index.json').then(r => r.json()).then(d => {
