@@ -218,7 +218,7 @@ class GameScene extends Phaser.Scene {
 
     // Zusammenstöße
     const ph = this.physics;
-    ph.add.collider(p, this.solids); ph.add.collider(p, this.ledges); ph.add.collider(p, this.floes);
+    ph.add.collider(p, this.solids); ph.add.collider(p, this.ledges); ph.add.collider(p, this.floes, (pl, f) => { if (pl.body.bottom <= f.body.top + 6) { this.rideFloe = f; this.rideT = this.time.now; } });
     ph.add.collider(p, this.cats, (pl, c) => this.wakeCat(c)); ph.add.collider(this.enemies, this.cats);
     ph.add.collider(p, this.crumbles, (pl, c) => this.crumble(c)); ph.add.collider(this.enemies, this.crumbles);
     if (this.king) {
@@ -460,7 +460,8 @@ class GameScene extends Phaser.Scene {
 
     if (this.king && !this.king.dead) this.updateKing(time);
 
-    // Eisschollen
+    // Eisschollen (der Weihnachtsmann fährt auf der Scholle mit)
+    if (this.rideFloe && time - this.rideT < 60 && this.rideFloe.active) p.x += this.rideFloe.body.velocity.x * this.game.loop.delta / 1000;
     this.floes.children.iterate(f => { if (!f) return; if (f.x <= f.minX) f.setVelocityX(55); else if (f.x >= f.maxX) f.setVelocityX(-55); });
 
     // Eiszapfen

@@ -28,9 +28,13 @@ function doorOpen(n) {
 }
 function doorOf(id) { return INDEX ? INDEX.calendar.indexOf(id) + 1 : 0; }
 function unlocked(i) {
-  const id = order[i], n = doorOf(id), rec = Save.data.levels[id];
-  if (id.startsWith('i-')) { if (Save.data.papa || id === 'i-1') return true; const prev = Save.data.levels[order[i - 1]]; return !!(prev && prev.done) || !!(rec && rec.done); }
-  return (rec && rec.done) || (n > 0 && doorOpen(n));
+  // Ohne Adventskalender: jedes Level geht auf, wenn das vorherige geschafft ist.
+  const id = order[i], rec = Save.data.levels[id], done = x => !!(Save.data.levels[x] && Save.data.levels[x].done);
+  if (Save.data.papa || id === 'i-1' || (rec && rec.done)) return true;
+  const BONUS = { 'b-1': 'w1-3', 'b-2': 'w2-4', 'b-3': 'w3-4', 'b-4': 'w5-4' };
+  if (BONUS[id]) return done(BONUS[id]);
+  const main = order.filter(x => !BONUS[x]), k = main.indexOf(id);
+  return k > 0 && done(main[k - 1]);
 }
 const DOOR_POS = [7, 15, 2, 20, 11, 23, 4, 17, 9, 1, 13, 22, 6, 19, 3, 12, 24, 8, 16, 5, 21, 10, 18, 14];
 const DOOR_COL = ['red', 'green', 'blue', 'gold'];
@@ -71,11 +75,6 @@ function renderMenu() {
   const R = Save.data.resume;
   $('#resume').innerHTML = R ? `<button class="resbtn" id="resBtn"><b>Weiterspielen</b><span>${RDG.lvLabel(R.id)} · ${R.name} – da, wo du aufgehört hast</span></button>` : '';
   if (R) $('#resBtn').onclick = () => startLevel(R.id, true);
-  renderCalendar();
-  const today = new Date(), days = Math.ceil((new Date(today.getFullYear(), 11, 1) - today) / 864e5);
-  $('#calnote').textContent = today.getMonth() < 11 && today.getMonth() >= 9 && !Save.data.papa
-    ? `Noch ${days} ${days === 1 ? 'Tag' : 'Tage'} bis zum ersten Türchen. Bis dahin: Spiel die Einführung!`
-    : 'Jeden Tag geht ein neues Türchen auf. Verpasste Türchen bleiben offen.';
   $('#worlds').innerHTML = worldCards(INDEX.worlds.filter(w => w.id !== 0));
   $('#intro').innerHTML = worldCards(INDEX.worlds.filter(w => w.id === 0));
   $('#musicBtn').textContent = Save.data.settings.music ? 'Musik: an' : 'Musik: aus';
@@ -88,7 +87,7 @@ function worldCards(list) {
       const stars = (rec ? rec.stars : [0, 0, 0]).map(STAR).join('');
       return `<button class="lvbtn" data-id="${l.id}" ${open ? '' : 'disabled'}>
         <span class="num">${RDG.lvLabel(l.id)}</span><span class="nm">${l.name}</span>
-        <span class="stars">${open ? stars : l.id.startsWith('i-') ? 'erst das Level davor' : `Türchen ${doorOf(l.id)}`}</span>${rec && rec.best !== null ? `<span class="best">Rekord ${fmt(rec.best)}</span>` : ''}</button>`;
+        <span class="stars">${open ? stars : 'erst das Level davor'}</span>${rec && rec.best !== null ? `<span class="best">Rekord ${fmt(rec.best)}</span>` : ''}</button>`;
     }).join('')}</div></div>`;
   }).join('');
 }
@@ -118,8 +117,8 @@ const STORY = {
     'Los geht\'s!'],
   outro: ['Zu spät …',
     'Der Weihnachtsmann hat sich durch die Werkstatt gekämpft, aber die Wichtel sind mit den Geschenken durch das Hintertor entwischt. Sie verstecken sie im ganzen Nordland!',
-    'Ab dem 1. Dezember geht die Jagd weiter: Jeden Tag öffnet sich ein Türchen im Adventskalender. Und an Heiligabend wartet der Wichtelkönig …',
-    'Zum Adventskalender']
+    'Jetzt beginnt die große Jagd durch Wald, Eisberge, Stadt und Werkstatt bis zur Wichtelburg. Und ganz am Ende wartet der Wichtelkönig …',
+    'Auf zu Welt 1!']
 };
 function story(k, then) {
   const [h, a, b, btn] = STORY[k];
@@ -186,7 +185,6 @@ $('#pauseBtn').onclick = () => {
 };
 
 // ---------- Menü ----------
-$('#cal').addEventListener('click', e => { const b = e.target.closest('.door'); if (b) openDoor(+b.dataset.n); });
 const lvClick = e => {
   const b = e.target.closest('.lvbtn'); if (!b || b.disabled) return;
   const id = b.dataset.id;
